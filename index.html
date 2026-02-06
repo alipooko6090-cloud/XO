@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>RPG VIP - Impossible</title>
+    <style>
+        /* الخلفية والخطوط */
+        body {
+            background-color: #000;
+            background-image: radial-gradient(circle, #1a1a1a 0%, #000 90%);
+            color: #d4af37;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* حاوية العنوان */
+        .header-container {
+            text-align: center;
+            margin-bottom: 30px;
+            width: 100%;
+        }
+
+        .vip-tag {
+            background: #d4af37;
+            color: #000;
+            padding: 2px 10px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            font-size: 5rem;
+            margin: 0;
+            color: #d4af37;
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+            letter-spacing: 5px;
+        }
+
+        /* اسم علي فخري الملون والمتحرك */
+        .supervisor {
+            font-size: 1rem;
+            color: #555;
+            margin-top: 5px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        
+        .rainbow-text {
+            font-weight: 900;
+            font-size: 1.2rem;
+            background: linear-gradient(
+                90deg, 
+                #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8f00ff
+            );
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: gradientAnim 3s ease infinite;
+        }
+
+        @keyframes gradientAnim {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* رقعة اللعب */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 90px);
+            grid-gap: 5px;
+            background: #d4af37;
+            padding: 5px;
+            box-shadow: 0 0 40px rgba(212, 175, 55, 0.1);
+            border-radius: 2px;
+        }
+
+        .cell {
+            width: 90px;
+            height: 90px;
+            background: #0a0a0a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .cell:active { background: #222; }
+
+        .cell.x { color: #d4af37; text-shadow: 0 0 10px #d4af37; }
+        .cell.o { color: #ff0000; text-shadow: 0 0 10px #ff0000; }
+
+        /* حالة اللعبة */
+        .status {
+            margin-top: 30px;
+            font-size: 1.2rem;
+            height: 25px;
+            color: #888;
+        }
+
+        /* زر الإعادة */
+        button {
+            margin-top: 20px;
+            background: transparent;
+            color: #d4af37;
+            border: 1px solid #d4af37;
+            padding: 12px 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            letter-spacing: 2px;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #d4af37;
+            color: #000;
+            box-shadow: 0 0 20px #d4af37;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-container">
+        <div class="vip-tag">VIP EDITION</div>
+        <h1>RPG</h1>
+        <div class="supervisor">By: <span class="rainbow-text">ALI FAKHRI</span></div>
+    </div>
+
+    <div class="board" id="board"></div>
+    <div class="status" id="status">اضغط للعب</div>
+    <button onclick="resetGame()">RESTART</button>
+
+    <script>
+        // إعدادات الصوت (Web Audio API)
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            if (type === 'move') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            } 
+            else if (type === 'lose') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.5);
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.5);
+            }
+            else if (type === 'draw') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            }
+        }
+
+        // منطق اللعبة
+        const boardElement = document.getElementById('board');
+        const statusElement = document.getElementById('status');
+        let board = Array(9).fill('');
+        let gameActive = true;
+        const PLAYER = 'X';
+        const AI = 'O';
+
+        function createBoard() {
+            boardElement.innerHTML = '';
+            board.forEach((cell, index) => {
+                const cellElement = document.createElement('div');
+                cellElement.classList.add('cell');
+                if (cell === PLAYER) cellElement.classList.add('x');
+                if (cell === AI) cellElement.classList.add('o');
+                cellElement.innerText = cell;
+                cellElement.addEventListener('click', () => playerMove(index));
+                boardElement.appendChild(cellElement);
+            });
+        }
+
+        function playerMove(index) {
+            if (board[index] === '' && gameActive) {
+                playSound('move');
+                board[index] = PLAYER;
+                updateBoard();
+                
+                if (checkWin(board, PLAYER)) endGame("مستحيل!"); 
+                else if (checkDraw()) {
+                    playSound('draw');
+                    endGame("تعادل");
+                } else {
+                    gameActive = false;
+                    // الذكاء الاصطناعي يلعب فوراً بدون تأخير (عدواني)
+                    setTimeout(aiMove, 150); 
+                }
+            }
+        }
+
+        function aiMove() {
+            let bestScore = -Infinity;
+            let move;
+            for (let i = 0; i < 9; i++) {
+                if (board[i] === '') {
+                    board[i] = AI;
+                    let score = minimax(board, 0, false);
+                    board[i] = '';
+                    if (score > bestScore) {
+                        bestScore = score;
+                        move = i;
+                    }
+                }
+            }
+            
+            board[move] = AI;
+            playSound('move');
+            gameActive = true;
+            updateBoard();
+
+            if (checkWin(board, AI)) {
+                playSound('lose');
+                endGame("خسارة");
+            } else if (checkDraw()) {
+                playSound('draw');
+                endGame("تعادل");
+            }
+        }
+
+        // خوارزمية Minimax المستحيلة
+        function minimax(board, depth, isMaximizing) {
+            if (checkWin(board, AI)) return 10 - depth;
+            if (checkWin(board, PLAYER)) return depth - 10;
+            if (!board.includes('')) return 0;
+
+            if (isMaximizing) {
+                let bestScore = -Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (board[i] === '') {
+                        board[i] = AI;
+                        let score = minimax(board, depth + 1, false);
+                        board[i] = '';
+                        bestScore = Math.max(score, bestScore);
+                    }
+                }
+                return bestScore;
+            } else {
+                let bestScore = Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (board[i] === '') {
+                        board[i] = PLAYER;
+                        let score = minimax(board, depth + 1, true);
+                        board[i] = '';
+                        bestScore = Math.min(score, bestScore);
+                    }
+                }
+                return bestScore;
+            }
+        }
+
+        function checkWin(board, player) {
+            const wins = [[0,1,2], [3,4,5], [6,7,8], [0,3,6], [1,4,7], [2,5,8], [0,4,8], [2,4,6]];
+            return wins.some(c => c.every(i => board[i] === player));
+        }
+
+        function checkDraw() { return !board.includes(''); }
+
+        function updateBoard() {
+            const cells = document.querySelectorAll('.cell');
+            board.forEach((cell, i) => {
+                cells[i].innerText = cell;
+                cells[i].className = 'cell ' + (cell === PLAYER ? 'x' : (cell === AI ? 'o' : ''));
+            });
+        }
+
+        function endGame(msg) {
+            statusElement.innerText = msg;
+            gameActive = false;
+        }
+
+        function resetGame() {
+            board.fill('');
+            gameActive = true;
+            statusElement.innerText = "ابدأ";
+            createBoard();
+        }
+
+        createBoard();
+    </script>
+</body>
+</html>
